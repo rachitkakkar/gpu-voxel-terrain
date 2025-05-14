@@ -31,7 +31,7 @@ The crux of the algorithm is also in the shader,
 which is modified to work per pixel (instead of drawing lines) and also normalizes the texture values 
 to UV coordinates in order to accurately sample it.
 
-```
+```wgsl
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let horizon = f32(camera.screen_height / 2);
