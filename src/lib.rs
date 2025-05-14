@@ -16,8 +16,11 @@ use wasm_bindgen::prelude::*;
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct Camera {
-    width: u32,
-    height: u32
+    p: [f32; 2],
+    height: f32,
+    angle: f32,
+    screen_width: u32,
+    screen_height: u32,
 }
 
 struct State<'a> {
@@ -42,15 +45,19 @@ struct State<'a> {
     // Height and color maps
     height_map: bitmap::Bitmap,
     height_map_bind_group: wgpu::BindGroup,
-
+    color_map: bitmap::Bitmap,
+    color_map_bind_group: wgpu::BindGroup,
 }
 
 impl<'a> State<'a> {
     async fn new(window: &'a Window) -> State<'a> {
         let size = window.inner_size();
         let camera = Camera {
-            width: window.inner_size().to_logical(window.scale_factor()).width,
-            height: window.inner_size().to_logical(window.scale_factor()).height,
+            p: [512.0, 800.0],
+            height: 70.0,
+            angle: 20.0,
+            screen_width: window.inner_size().to_logical(window.scale_factor()).width,
+            screen_height: window.inner_size().to_logical(window.scale_factor()).height,
         };
 
         // The instance is a handle to our GPU
@@ -120,7 +127,7 @@ impl<'a> State<'a> {
         let height_map =
             bitmap::Bitmap::from_bytes(&device, &queue, height_bytes, "height-map.png").unwrap();
 
-        let texture_bind_group_layout =
+        let height_map_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
@@ -140,12 +147,12 @@ impl<'a> State<'a> {
                         count: None,
                     },
                 ],
-                label: Some("texture_bind_group_layout"),
+                label: Some("height_map_bind_group_layout"),
             });
         
         let height_map_bind_group = device.create_bind_group(
             &wgpu::BindGroupDescriptor {
-                layout: &texture_bind_group_layout,
+                layout: &height_map_bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
@@ -156,11 +163,53 @@ impl<'a> State<'a> {
                         resource: wgpu::BindingResource::Sampler(&height_map.sampler),
                     }
                 ],
-                label: Some("diffuse_bind_group"),
+                label: Some("height_map_bind_group"),
             }
         );
 
+        let color_bytes = include_bytes!("assets/color-map.png");
+        let color_map =
+            bitmap::Bitmap::from_bytes(&device, &queue, color_bytes, "color-map.png").unwrap();
 
+        let color_map_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("color_map_bind_group_layout"),
+            });
+        
+        let color_map_bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &color_map_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&color_map.view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&color_map.sampler),
+                    }
+                ],
+                label: Some("color_map_bind_group"),
+            }
+        );
 
         // Load shader
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -208,7 +257,8 @@ impl<'a> State<'a> {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
                     &camera_bind_group_layout,
-                    &texture_bind_group_layout
+                    &height_map_bind_group_layout,
+                    &color_map_bind_group_layout,
                 ],
                 push_constant_ranges: &[],
             });
@@ -276,6 +326,8 @@ impl<'a> State<'a> {
 
             height_map,
             height_map_bind_group,
+            color_map,
+            color_map_bind_group
         }
     }
 
@@ -290,8 +342,8 @@ impl<'a> State<'a> {
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
 
-            self.camera.width = new_size.to_logical(self.window.scale_factor()).width;
-            self.camera.height = new_size.to_logical(self.window.scale_factor()).height;
+            self.camera.screen_width = new_size.to_logical(self.window.scale_factor()).width;
+            self.camera.screen_height = new_size.to_logical(self.window.scale_factor()).height;
             self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
         }
     }
@@ -301,7 +353,10 @@ impl<'a> State<'a> {
         false
     }
 
-    fn update(&mut self) {}
+    fn update(&mut self) {
+        self.camera.angle += 0.05;
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
+    }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
@@ -339,6 +394,7 @@ impl<'a> State<'a> {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
             render_pass.set_bind_group(1, &self.height_map_bind_group, &[]);
+            render_pass.set_bind_group(2, &self.color_map_bind_group, &[]);
             render_pass.draw(0..6, 0..1);
         }
 
