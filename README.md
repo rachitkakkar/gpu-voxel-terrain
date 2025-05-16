@@ -50,7 +50,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             -cosPhi * z - cosPhi * z + camera.p.y);
 
         let dx = (pright - pleft) / f32(camera.screen_width);
-        var current = pleft + in.pos.x * dx;
+        // Adjust in.pos.x from [-1, 1] -> [0, 1]
+        var current = pleft + (in.pos.x * 0.5 + 0.5) * dx;
 
         let map_uv = (current.xy / vec2<f32>(f32(map_size.x - 1u), f32(map_size.y - 1u)));
         let height_val = textureSample(t_height_map, s_height_map, map_uv).r * 255.0;

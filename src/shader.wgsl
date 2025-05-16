@@ -1,8 +1,3 @@
-// https://sotrh.github.io/learn-wgpu/beginner/tutorial5-textures/#pipelinelayout
-// https://raytracing.github.io/gpu-tracing/book/RayTracingGPUEdition.html
-// https://github.com/melchor629/raycastergl/tree/master
-// https://www.shadertoy.com/view/4dG3RD -> Chrome
-
 // Vertex shader
 
 struct VertexOutput {
@@ -74,6 +69,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         );
 
         let dx = (pright - pleft) / f32(camera.screen_width);
+        // Adjust in.pos.x from [-1, 1] -> [0, 1]
         var current = pleft + (in.pos.x * 0.5 + 0.5) * dx;
 
         let map_uv = (current.xy / vec2<f32>(f32(map_size.x - 1u), f32(map_size.y - 1u)));
