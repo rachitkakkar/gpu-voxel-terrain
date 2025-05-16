@@ -44,3 +44,40 @@ fn DrawVerticalLine(x: i32, y_start: f32, y_end: i32, color: vec4<f32>) {
         textureStore(outputTex, vec2<i32>(x, y), color);
     }
 }
+
+// @fragment
+// fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+//     let horizon = f32(camera.screen_height) / 2.0;
+//     let scale_factor = f32(camera.screen_height) * 2.0;
+
+//     let sinPhi = sin(camera.angle);
+//     let cosPhi = cos(camera.angle);
+
+//     let forward = vec2<f32>(cosPhi, sinPhi);
+//     let right = vec2<f32>(-sinPhi, cosPhi); // Perpendicular to forward
+
+//     let distance = 1000.0;
+
+//     let uv = in.pos.xy / vec2<f32>(f32(camera.screen_width), f32(camera.screen_height)) + 0.5;
+//     var color = vec4<f32>(0.5 * uv.y, 0.7 * uv.y, 1.0, 1.0);
+
+//     let map_size = vec2<f32>(textureDimensions(t_height_map, 0));
+
+//     // Screen x in range [-0.5, 0.5]
+//     let screen_x = (in.pos.x / f32(camera.screen_width)) - 0.5;
+
+//     for (var z = distance; z > 1.0; z = z - 0.5) {
+//         // Ray direction for this column: forward + offset * right
+//         let world_pos = camera.p + forward * z + right * (screen_x * z);
+//         let map_uv = world_pos / (map_size - vec2<f32>(1.0));
+
+//         let height_val = textureSample(t_height_map, s_height_map, map_uv).r * 255.0;
+//         let height_on_screen = ((camera.height - height_val) / z) * scale_factor + horizon;
+
+//         if (height_on_screen < in.pos.y) {
+//             color = textureSample(t_color_map, s_color_map, map_uv);
+//         }
+//     }
+
+//     return color;
+// }

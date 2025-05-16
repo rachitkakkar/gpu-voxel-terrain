@@ -50,30 +50,37 @@ var s_color_map: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let horizon = f32(camera.screen_height / 2);
-    let scale_factor = f32(camera.screen_height * 2);
+    let horizon = f32(camera.screen_height / 3);
+    let scale_factor = f32(camera.screen_height);
     let sinPhi = sin(camera.angle);
     let cosPhi = cos(camera.angle);
     let distance = 1000.0;
 
-    let uv = in.pos.xy / vec2<f32>(f32(camera.screen_width), f32(camera.screen_height)) + 0.5;
-    var color = vec4<f32>(0.5f * uv.y, 0.7f * uv.y, 1.0f, 0.0f);
+    // let uv = in.pos.xy / vec2<f32>(f32(camera.screen_width), f32(camera.screen_height)) + 0.5;
+    var color = vec4<f32>(0.5f, 0.7f, 1.0f, 0.0f);
 
-    let map_size = textureDimensions(t_height_map).xy;
-    for (var z = distance; z > 1.0; z = z - 0.5) {
-        let pleft = vec2<f32>(-cosPhi * z - sinPhi * z + camera.p.x,
-            sinPhi * z - cosPhi * z + camera.p.y);
-        let pright =  vec2<f32>(cosPhi * z - sinPhi * z + camera.p.x,
-            -cosPhi * z - cosPhi * z + camera.p.y);
+    let map_size = textureDimensions(t_height_map, 0).xy;
+    for (var z = distance; z > 1.0; z = z - 1.0) {
+        // let half_width = z * tan(camera.fov * 0.5);  // Field of view scaling
+        let half_width = z * tan(90 * 0.5);  // Field of view scaling
+
+        let pleft = vec2(
+            -cosPhi * half_width - sinPhi * z + camera.p.x,
+            sinPhi * half_width - cosPhi * z + camera.p.y
+        );
+        let pright = vec2(
+            cosPhi * half_width - sinPhi * z + camera.p.x,
+            -sinPhi * half_width - cosPhi * z + camera.p.y
+        );
 
         let dx = (pright - pleft) / f32(camera.screen_width);
-        var current = pleft + in.pos.x * dx;
+        var current = pleft + (in.pos.x * 0.5 + 0.5) * dx;
 
         let map_uv = (current.xy / vec2<f32>(f32(map_size.x - 1u), f32(map_size.y - 1u)));
         let height_val = textureSample(t_height_map, s_height_map, map_uv).r * 255.0;
         let height_on_screen = ((camera.height - height_val) / z) * scale_factor + horizon;
 
-        if (height_on_screen < in.pos.y) {
+        if (height_on_screen < (in.pos.y * 0.5 + 0.5)) {
             color = textureSample(t_color_map, s_height_map, map_uv);
         }
     }

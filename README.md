@@ -3,8 +3,7 @@
 
 GPU implementation of the 'Voxel Space' algorithm (first pioneered by NovaLogic in the 1992 game *Comanche: Maximum Overkill*) in order to render voxel terrain using Rust and wgpu.
 
-The algorithm takes in a height and a color map to efficiently generate a 2.5D from just a height and color map (overcoming the CPU limitations of the '90s to render graphics that were ahead of its time). For my GPU implementation, these were represented as textures, which were passed into the shader as a bind group, along with uniforms for camera values. Textures
-also include sample in order to handle the repeating/periodic nature of the color and height maps.
+The algorithm takes in a height and a color map to efficiently generate a 2.5D from just a height and color map (overcoming the CPU limitations of the '90s to render graphics that were ahead of its time). For my GPU implementation, these were represented as textures, which were passed into the shader as a bind group, along with a uniform for camera values. Textures also include a sampler in order to handle the repeating/periodic nature of the color and height maps.
 
 ```wgsl
 struct CameraUniform {
