@@ -47,10 +47,6 @@ struct State<'a> {
     height_map_bind_group: wgpu::BindGroup,
     color_map: bitmap::Bitmap,
     color_map_bind_group: wgpu::BindGroup,
-
-    // Y buffer
-    y_buffer: wgpu::Buffer,
-    y_buffer_bind_group: wgpu::BindGroup,
 }
 
 impl<'a> State<'a> {
@@ -215,45 +211,6 @@ impl<'a> State<'a> {
             }
         );
 
-        // Y buffer texture creation
-        // let y_buffer = bitmap::Bitmap::create_depth_texture(&device, &config,"depth_texture");
-        let y_buffer_data = vec![0.0f32; (camera.screen_width * 4) as usize];
-        let y_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Y Buffer"),
-            contents: bytemuck::cast_slice(&y_buffer_data),
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::COPY_SRC,
-        });
-
-        let y_buffer_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Y Buffer Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }
-            ],
-        });
-
-        let y_buffer_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Y Buffer Bind Group"),
-            layout: &y_buffer_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: y_buffer.as_entire_binding(),
-                }
-            ],
-        });
-        
-
         // Load shader
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -302,7 +259,6 @@ impl<'a> State<'a> {
                     &camera_bind_group_layout,
                     &height_map_bind_group_layout,
                     &color_map_bind_group_layout,
-                    &y_buffer_bind_group_layout,
                 ],
                 push_constant_ranges: &[],
             });
@@ -372,9 +328,6 @@ impl<'a> State<'a> {
             height_map_bind_group,
             color_map,
             color_map_bind_group,
-
-            y_buffer,
-            y_buffer_bind_group,
         }
     }
 
@@ -403,7 +356,6 @@ impl<'a> State<'a> {
     fn update(&mut self) {
         self.camera.angle += 0.05;
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
-        self.queue.write_buffer(&self.y_buffer, 0, bytemuck::cast_slice(&vec![0.0f32; (self.camera.screen_width * 4) as usize]));
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -443,7 +395,6 @@ impl<'a> State<'a> {
             render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
             render_pass.set_bind_group(1, &self.height_map_bind_group, &[]);
             render_pass.set_bind_group(2, &self.color_map_bind_group, &[]);
-            render_pass.set_bind_group(3, &self.y_buffer_bind_group, &[]);
             render_pass.draw(0..6, 0..1);
         }
 

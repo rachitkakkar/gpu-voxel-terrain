@@ -35,13 +35,6 @@ var t_color_map: texture_2d<f32>;
 @group(2) @binding(1)
 var s_color_map: sampler;
 
-struct YBuffer {
-    values: array<vec4f>,
-};
-
-@group(3) @binding(0)
-var<storage, read_write> y_buffer: YBuffer;
-
 @fragment
 fn fs_main(@builtin(position) pos: vec4f) -> @location(0) vec4<f32> {
     let horizon = f32(camera.screen_height / 2);
@@ -55,14 +48,6 @@ fn fs_main(@builtin(position) pos: vec4f) -> @location(0) vec4<f32> {
     var sky_color = vec4f(0.0, uv, 1.0);
 
     let map_size = textureDimensions(t_height_map, 0).xy;
-
-    let index = i32(pos.x);
-    let existing_y = y_buffer.values[index].x;
-
-    if (existing_y != 0.0 && existing_y < pos.y) {
-        return vec4f(y_buffer.values[index].yzw, 1.0f);
-    }
-
     for (var z = 0.0; z < distance; z = z + 1.0) {
         // let half_width = z * tan(camera.fov * 0.5);  // Field of view scaling
         let half_width = z * tan(90 * 0.5);  // Field of view scaling
@@ -85,8 +70,6 @@ fn fs_main(@builtin(position) pos: vec4f) -> @location(0) vec4<f32> {
 
         if (height_on_screen < pos.y) {
             let terrain_color = textureSample(t_color_map, s_height_map, map_uv);
-            y_buffer.values[index] = vec4f(height_on_screen, terrain_color.xyz);
-
             return terrain_color;
         }
     }

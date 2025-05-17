@@ -48,7 +48,6 @@ fn DrawVerticalLine(x: i32, y_start: f32, y_end: i32, color: vec4<f32>) {
     }
 }
 
-
 // Camera experiments
 
 @fragment
