@@ -54,10 +54,10 @@ impl<'a> State<'a> {
         let size = window.inner_size();
         let camera = Camera {
             p: [512.0, 800.0],
-            height: 45.0,
-            angle: 40.0,
-            screen_width: window.inner_size().to_logical(window.scale_factor()).width,
-            screen_height: window.inner_size().to_logical(window.scale_factor()).height,
+            height: 20.0,
+            angle: 41.0,
+            screen_width: window.inner_size().width,
+            screen_height: window.inner_size().height,
         };
 
         // The instance is a handle to our GPU
@@ -341,8 +341,8 @@ impl<'a> State<'a> {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
 
-            self.camera.screen_width = new_size.to_logical(self.window.scale_factor()).width;
-            self.camera.screen_height = new_size.to_logical(self.window.scale_factor()).height;
+            self.camera.screen_width = new_size.width;
+            self.camera.screen_height = new_size.height;
             self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
             self.surface.configure(&self.device, &self.config);
         }
@@ -354,8 +354,8 @@ impl<'a> State<'a> {
     }
 
     fn update(&mut self) {
-        // self.camera.angle += 0.05;
-        // self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
+        self.camera.angle += 0.05;
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {

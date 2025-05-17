@@ -37,21 +37,27 @@ var s_color_map: sampler;
 
 @fragment
 fn fs_main(@builtin(position) pos: vec4f) -> @location(0) vec4<f32> {
-    let horizon = f32(camera.screen_height / 2);
-    let scale_factor = f32(camera.screen_height * 2);
+    // Camera constants (scaled based off screen dimensions)
+    let horizon = f32(camera.screen_height) / 4.0;
+    let scale_factor = f32(camera.screen_height) * 1.5;
     let sinPhi = sin(camera.angle);
     let cosPhi = cos(camera.angle);
-    let distance = 1000.0;
+    let distance = 1200.0;
 
     // Normalize coordinates to [0, 1.0]
     let uv = pos.xy / vec2f(f32(camera.screen_width - 1u), f32(camera.screen_height - 1u));
-    var sky_color = vec4f(0.0, uv, 1.0);
 
+    // Compute sky gradient
+    var sky_color = vec4f(vec3f(0.3, 0.5, 1.0) * (1.0 - uv.y), 1.0);
+
+    // Run algorithm on map
     let map_size = textureDimensions(t_height_map, 0).xy;
-    for (var z = 0.0; z < distance; z = z + 1.0) {
+    for (var z = 0.2; z < distance; z += 1.0) {
         // let half_width = z * tan(camera.fov * 0.5);  // Field of view scaling
-        let half_width = z * tan(90 * 0.5);  // Field of view scaling
 
+        // Field of view scaling and rotation calculations
+        // let half_width = z * tan(90 * 0.5);
+        let half_width = z;
         let pleft = vec2(
             -cosPhi * half_width - sinPhi * z + camera.p.x,
             sinPhi * half_width - cosPhi * z + camera.p.y
@@ -62,15 +68,23 @@ fn fs_main(@builtin(position) pos: vec4f) -> @location(0) vec4<f32> {
         );
 
         let dx = (pright - pleft) / f32(camera.screen_width);
-        var current = pleft + (pos.x * 0.5 + 0.5) * dx;
+        var current = pleft + pos.x * dx;
 
+        // Normalize texture sampling coordinates to [0, 1.0]
         let map_uv = (current.xy / vec2<f32>(f32(map_size.x - 1u), f32(map_size.y - 1u)));
-        let height_val = textureSample(t_height_map, s_height_map, map_uv).r;
-        let height_on_screen = ((camera.height - (height_val * 255)) / z) * scale_factor + horizon;
+
+        // Sample repeating texture for height
+        let height_val = textureSample(t_height_map, s_height_map, map_uv).r * 255; 
+
+        // Adjust height on screen based on camera constants like height and distance from camera (z value)
+        let height_on_screen = ((camera.height - height_val) / z) * scale_factor + horizon;
 
         if (height_on_screen < pos.y) {
+            // Sample repeating texture for color
             let terrain_color = textureSample(t_color_map, s_height_map, map_uv);
-            return terrain_color;
+
+            let fog = pow((distance - z) / distance, 0.2f);
+            return ((fog * terrain_color) + (1 - fog) * sky_color);
         }
     }
 
