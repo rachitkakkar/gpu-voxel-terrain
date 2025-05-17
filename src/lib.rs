@@ -47,6 +47,10 @@ struct State<'a> {
     height_map_bind_group: wgpu::BindGroup,
     color_map: bitmap::Bitmap,
     color_map_bind_group: wgpu::BindGroup,
+
+    // Y buffer
+    y_buffer: wgpu::Buffer,
+    y_buffer_bind_group: wgpu::BindGroup,
 }
 
 impl<'a> State<'a> {
@@ -85,7 +89,7 @@ impl<'a> State<'a> {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
-                    required_features: wgpu::Features::empty(),
+                    required_features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
                     // WebGL doesn't support all of wgpu's features, so if
                     // we're building for the web we'll have to disable some.
                     required_limits: if cfg!(target_arch = "wasm32") {
@@ -211,10 +215,49 @@ impl<'a> State<'a> {
             }
         );
 
+        // Y buffer texture creation
+        // let y_buffer = bitmap::Bitmap::create_depth_texture(&device, &config,"depth_texture");
+        let y_buffer_data = vec![0.0f32; (camera.screen_width * 4) as usize];
+        let y_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Y Buffer"),
+            contents: bytemuck::cast_slice(&y_buffer_data),
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+        });
+
+        let y_buffer_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Y Buffer Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }
+            ],
+        });
+
+        let y_buffer_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Y Buffer Bind Group"),
+            layout: &y_buffer_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: y_buffer.as_entire_binding(),
+                }
+            ],
+        });
+        
+
         // Load shader
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("voxels.wgsl").into()),
         });
 
         let camera_buffer = device.create_buffer_init(
@@ -259,6 +302,7 @@ impl<'a> State<'a> {
                     &camera_bind_group_layout,
                     &height_map_bind_group_layout,
                     &color_map_bind_group_layout,
+                    &y_buffer_bind_group_layout,
                 ],
                 push_constant_ranges: &[],
             });
@@ -327,7 +371,10 @@ impl<'a> State<'a> {
             height_map,
             height_map_bind_group,
             color_map,
-            color_map_bind_group
+            color_map_bind_group,
+
+            y_buffer,
+            y_buffer_bind_group,
         }
     }
 
@@ -340,11 +387,11 @@ impl<'a> State<'a> {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
-            self.surface.configure(&self.device, &self.config);
 
             self.camera.screen_width = new_size.to_logical(self.window.scale_factor()).width;
             self.camera.screen_height = new_size.to_logical(self.window.scale_factor()).height;
             self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
+            self.surface.configure(&self.device, &self.config);
         }
     }
 
@@ -356,6 +403,7 @@ impl<'a> State<'a> {
     fn update(&mut self) {
         self.camera.angle += 0.05;
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
+        self.queue.write_buffer(&self.y_buffer, 0, bytemuck::cast_slice(&vec![0.0f32; (self.camera.screen_width * 4) as usize]));
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -395,6 +443,7 @@ impl<'a> State<'a> {
             render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
             render_pass.set_bind_group(1, &self.height_map_bind_group, &[]);
             render_pass.set_bind_group(2, &self.color_map_bind_group, &[]);
+            render_pass.set_bind_group(3, &self.y_buffer_bind_group, &[]);
             render_pass.draw(0..6, 0..1);
         }
 
@@ -416,7 +465,7 @@ pub async fn run() {
     }
 
     let event_loop = EventLoop::new().unwrap();
-    let window_size = winit::dpi::LogicalSize::new(400, 300);
+    let window_size = winit::dpi::LogicalSize::new(800, 600);
     let window = WindowBuilder::new()
         .with_inner_size(window_size)
         .with_resizable(true)
