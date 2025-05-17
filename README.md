@@ -1,7 +1,5 @@
 # Voxel Terrain
 ![Shader Ouput](output.png)
-![Shader Ouput 2](output2.png)
-
 
 GPU implementation of the 'Voxel Space' algorithm (first pioneered by NovaLogic in the 1992 game *Comanche: Maximum Overkill*) in order to render voxel terrain using Rust and wgpu.
 
