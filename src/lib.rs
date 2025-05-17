@@ -54,8 +54,8 @@ impl<'a> State<'a> {
         let size = window.inner_size();
         let camera = Camera {
             p: [512.0, 800.0],
-            height: 20.0,
-            angle: 60.0,
+            height: 45.0,
+            angle: 40.0,
             screen_width: window.inner_size().to_logical(window.scale_factor()).width,
             screen_height: window.inner_size().to_logical(window.scale_factor()).height,
         };
@@ -354,8 +354,8 @@ impl<'a> State<'a> {
     }
 
     fn update(&mut self) {
-        self.camera.angle += 0.05;
-        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
+        // self.camera.angle += 0.05;
+        // self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
