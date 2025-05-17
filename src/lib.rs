@@ -124,7 +124,9 @@ impl<'a> State<'a> {
             desired_maximum_frame_latency: 2,
             view_formats: vec![],
         };
-        surface.configure(&device, &config);
+        if size.width > 0 && size.height > 0 {
+            surface.configure(&device, &config);
+        }
 
         // Load height map
         let height_bytes = include_bytes!("assets/height-map.png");
@@ -409,6 +411,7 @@ impl<'a> State<'a> {
     }
 }
 
+#[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 pub async fn run() {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
@@ -431,20 +434,18 @@ pub async fn run() {
     {
         // Winit prevents sizing with CSS, so we have to set
         // the size manually when on web.
-        use winit::dpi::PhysicalSize;
-
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()
             .and_then(|win| win.document())
             .and_then(|doc| {
-                let dst = doc.get_element_by_id("wasm-example")?;
+                let dst = doc.get_element_by_id("center")?;
                 let canvas = web_sys::Element::from(window.canvas()?);
                 dst.append_child(&canvas).ok()?;
                 Some(())
             })
             .expect("Couldn't append canvas to document body.");
 
-        let _ = window.request_inner_size(PhysicalSize::new(450, 400));
+        let _ = window.request_inner_size(window_size);
     }
 
     // State::new uses async code, so we're going to wait for it to finish

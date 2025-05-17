@@ -40,7 +40,7 @@ var s_color_map: sampler;
 fn fs_main(@builtin(position) pos: vec4f) -> @location(0) vec4<f32> {
     // Camera constants (scaled based off screen dimensions)
     let horizon = f32(camera.screen_height) / 4.0;
-    let scale_factor = f32(camera.screen_height) * 1.5;
+    let scale_factor = f32(camera.screen_height) * 1.2;
     let sinPhi = sin(camera.angle);
     let cosPhi = cos(camera.angle);
     let distance = 1200.0;

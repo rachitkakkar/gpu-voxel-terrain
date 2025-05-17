@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU Voxel Terrain</title>
+    <style>
+      body, html { 
+          margin: 0;
+          padding: 0;
+          overflow-x: hidden; 
+          overflow-y: hidden;
+          font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+          background-color: #484a4a;
+          color: #f0f0f0;
+      }
+  
+      #center {
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          position: absolute;
+      }
+  
+      #window-title {
+          position: absolute;
+          top: 13px;
+          left: 50%;
+          padding: 0;
+          margin: 0;
+          transform: translate(-50%, -50%);
+      }
+  
+      #window-controls {
+          background-color: #282626;
+          text-align: left;
+          padding-left: 9.5px;
+          padding-top: 6.5px;
+          height: 22.5px;
+          border-radius: 5px 5px 0px 0px;
+      }
+  </style>
+</head>
+
+<body>
+  <div id="center">
+    <div id="window-controls">
+      <svg xmlns="http://www.w3.org/2000/svg" width="54" height="14" viewBox="0 0 54 14"><g fill="none" fill-rule="evenodd" transform="translate(1 1)"><circle cx="6" cy="6" r="6" fill="#FF5F56" stroke="#E0443E" stroke-width=".5"></circle><circle cx="26" cy="6" r="6" fill="#FFBD2E" stroke="#DEA123" stroke-width=".5"></circle><circle cx="46" cy="6" r="6" fill="#27C93F" stroke="#1AAB29" stroke-width=".5"></circle></g></svg>
+    </div>
+    <div id="window-title">
+      <p>GPU Voxel Terrain</p>
+    </div>
+    <script type="module">
+        import init from "./pkg/gpu_voxel_terrain.js";
+        init().then(() => {
+            console.log("WASM Loaded");
+        });
+    </script>
+  </div>
+</body>
+
+</html>
