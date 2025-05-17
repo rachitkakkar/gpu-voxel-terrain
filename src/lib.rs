@@ -19,8 +19,10 @@ struct Camera {
     p: [f32; 2],
     height: f32,
     angle: f32,
+    fov: f32,
     screen_width: u32,
     screen_height: u32,
+    _padding: u32,
 }
 
 struct State<'a> {
@@ -56,8 +58,10 @@ impl<'a> State<'a> {
             p: [512.0, 800.0],
             height: 20.0,
             angle: 41.0,
+            fov: 90.0,
             screen_width: window.inner_size().width,
             screen_height: window.inner_size().height,
+            _padding: 0,
         };
 
         // The instance is a handle to our GPU

@@ -20,6 +20,7 @@ struct CameraUniform {
     p: vec2<f32>,
     height: f32,
     angle: f32,
+    fov: f32,
     screen_width: u32,
     screen_height: u32,
 };
@@ -53,11 +54,8 @@ fn fs_main(@builtin(position) pos: vec4f) -> @location(0) vec4<f32> {
     // Run algorithm on map
     let map_size = textureDimensions(t_height_map, 0).xy;
     for (var z = 0.2; z < distance; z += 1.0) {
-        // let half_width = z * tan(camera.fov * 0.5);  // Field of view scaling
-
         // Field of view scaling and rotation calculations
-        // let half_width = z * tan(90 * 0.5);
-        let half_width = z;
+        let half_width = z * tan(camera.fov * 0.5);
         let pleft = vec2(
             -cosPhi * half_width - sinPhi * z + camera.p.x,
             sinPhi * half_width - cosPhi * z + camera.p.y
