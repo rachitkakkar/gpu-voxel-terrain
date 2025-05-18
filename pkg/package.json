@@ -1,0 +1,15 @@
+{
+  "name": "gpu-voxel-terrain",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "gpu_voxel_terrain_bg.wasm",
+    "gpu_voxel_terrain.js",
+    "gpu_voxel_terrain.d.ts"
+  ],
+  "main": "gpu_voxel_terrain.js",
+  "types": "gpu_voxel_terrain.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
