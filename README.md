@@ -97,3 +97,5 @@ fn fs_main(@builtin(position) pos: vec4f) -> @location(0) vec4<f32> {
 'Learn Wgpu' by Ben Hansen https://sotrh.github.io/learn-wgpu/
 
 'Terrain rendering algorithm in less than 20 lines of code' by Sebastian Macke https://github.com/s-macke/VoxelSpace
+
+'Method for rendering realistic terrain simulation' https://patents.justia.com/patent/6700573

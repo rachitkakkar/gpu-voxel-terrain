@@ -8,7 +8,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-mod bitmap;
+mod texture;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -36,6 +36,7 @@ struct State<'a> {
     // it gets dropped after it as the surface contains
     // unsafe references to the window's resources.
     render_pipeline: wgpu::RenderPipeline,
+    compute_pipeline: wgpu::ComputePipeline,
     window: &'a Window,
 
     // Scene specific State
@@ -45,10 +46,14 @@ struct State<'a> {
     camera_bind_group: wgpu::BindGroup,
 
     // Height and color maps
-    height_map: bitmap::Bitmap,
+    height_map: texture::Texture,
     height_map_bind_group: wgpu::BindGroup,
-    color_map: bitmap::Bitmap,
+    color_map: texture::Texture,
     color_map_bind_group: wgpu::BindGroup,
+
+    // Output texture
+    output_texture: texture::Texture,
+    output_texture_bind_group: wgpu::BindGroup,
 }
 
 impl<'a> State<'a> {
@@ -131,14 +136,14 @@ impl<'a> State<'a> {
         // Load height map
         let height_bytes = include_bytes!("assets/height-map.png");
         let height_map =
-            bitmap::Bitmap::from_bytes(&device, &queue, height_bytes, "height-map.png").unwrap();
+            texture::Texture::from_bytes(&device, &queue, height_bytes, "height-map.png").unwrap();
 
         let height_map_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
@@ -148,7 +153,7 @@ impl<'a> State<'a> {
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
                     },
@@ -175,14 +180,14 @@ impl<'a> State<'a> {
 
         let color_bytes = include_bytes!("assets/color-map.png");
         let color_map =
-            bitmap::Bitmap::from_bytes(&device, &queue, color_bytes, "color-map.png").unwrap();
+            texture::Texture::from_bytes(&device, &queue, color_bytes, "color-map.png").unwrap();
 
         let color_map_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
@@ -192,7 +197,7 @@ impl<'a> State<'a> {
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
                     },
@@ -217,9 +222,43 @@ impl<'a> State<'a> {
             }
         );
 
-        // Load shader
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Shader"),
+        // Output texture
+        let output_texture = texture::Texture::create_storage_texture(&device, &config, "output_texture");
+        let output_texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::ReadWrite, // or ReadOnly, ReadWrite
+                        format: wgpu::TextureFormat::Rgba8Unorm,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                    count: None,
+                },
+            ],
+            label: Some("output_texture_bind_group_layout"),
+        });
+
+        let output_texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &output_texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&output_texture.view),
+                },
+            ],
+            label: Some("output_texture_bind_group"),
+        });
+
+
+        // Load shaders
+        let render_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Render Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+        });
+        let compute_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Compute shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("voxels.wgsl").into()),
         });
 
@@ -235,7 +274,7 @@ impl<'a> State<'a> {
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -265,6 +304,7 @@ impl<'a> State<'a> {
                     &camera_bind_group_layout,
                     &height_map_bind_group_layout,
                     &color_map_bind_group_layout,
+                    &output_texture_bind_group_layout,
                 ],
                 push_constant_ranges: &[],
             });
@@ -273,13 +313,13 @@ impl<'a> State<'a> {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shader,
+                module: &render_shader,
                 entry_point: Some("vs_main"),
                 buffers: &[],
                 compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
-                module: &shader,
+                module: &render_shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
@@ -317,6 +357,26 @@ impl<'a> State<'a> {
             cache: None,
         });
 
+        let compute_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Compute Pipeline Layout"),
+            bind_group_layouts: &[
+                &camera_bind_group_layout,
+                &height_map_bind_group_layout,
+                &color_map_bind_group_layout,
+                &output_texture_bind_group_layout,
+            ],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Compute Pipeline"),
+            layout: Some(&compute_pipeline_layout),
+            module: &compute_shader,
+            entry_point: Some("render"),
+            compilation_options: Default::default(),
+            cache: None,
+        });    
+
         Self {
             surface,
             device,
@@ -324,6 +384,7 @@ impl<'a> State<'a> {
             config,
             size,
             render_pipeline,
+            compute_pipeline,
             window,
 
             camera,
@@ -334,6 +395,9 @@ impl<'a> State<'a> {
             height_map_bind_group,
             color_map,
             color_map_bind_group,
+
+            output_texture,
+            output_texture_bind_group,
         }
     }
 
@@ -350,6 +414,10 @@ impl<'a> State<'a> {
             self.camera.screen_width = new_size.width;
             self.camera.screen_height = new_size.height;
             self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
+            
+            // Resize output texture
+            self.output_texture =
+                texture::Texture::create_storage_texture(&self.device, &self.config, "output_texture");
             self.surface.configure(&self.device, &self.config);
         }
     }
@@ -362,6 +430,9 @@ impl<'a> State<'a> {
     fn update(&mut self) {
         self.camera.angle += 0.05;
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
+
+        // Clear output texture
+        // To-do?
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -373,8 +444,21 @@ impl<'a> State<'a> {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
+                label: Some("Encoder"),
             });
+
+        {
+            let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("cpass"),
+                timestamp_writes: None,
+            });
+            cpass.set_pipeline(&self.compute_pipeline);
+            cpass.set_bind_group(0, &self.camera_bind_group, &[]);
+            cpass.set_bind_group(1, &self.height_map_bind_group, &[]);
+            cpass.set_bind_group(2, &self.color_map_bind_group, &[]);
+            cpass.set_bind_group(3, &self.output_texture_bind_group, &[]);
+            cpass.dispatch_workgroups((self.camera.screen_width + 7) / 8, (self.camera.screen_height + 7) / 8, 1);
+        }
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -401,6 +485,7 @@ impl<'a> State<'a> {
             render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
             render_pass.set_bind_group(1, &self.height_map_bind_group, &[]);
             render_pass.set_bind_group(2, &self.color_map_bind_group, &[]);
+            render_pass.set_bind_group(3, &self.output_texture_bind_group, &[]);
             render_pass.draw(0..6, 0..1);
         }
 
