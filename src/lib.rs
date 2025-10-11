@@ -301,9 +301,6 @@ impl<'a> State<'a> {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    &camera_bind_group_layout,
-                    &height_map_bind_group_layout,
-                    &color_map_bind_group_layout,
                     &output_texture_bind_group_layout,
                 ],
                 push_constant_ranges: &[],
@@ -417,7 +414,18 @@ impl<'a> State<'a> {
             
             // Resize output texture
             self.output_texture =
-                texture::Texture::create_storage_texture(&self.device, &self.config, "output_texture");
+                texture::Texture::create_storage_texture(&self.device, &self.config, "output_texture");      
+            // self.output_texture_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            //     layout: &output_texture_bind_group_layout,
+            //     entries: &[
+            //         wgpu::BindGroupEntry {
+            //             binding: 0,
+            //             resource: wgpu::BindingResource::TextureView(&self.output_texture.view),
+            //         },
+            //     ],
+            //     label: Some("output_texture_bind_group"),
+            // });
+            
             self.surface.configure(&self.device, &self.config);
         }
     }
@@ -430,9 +438,6 @@ impl<'a> State<'a> {
     fn update(&mut self) {
         self.camera.angle += 0.05;
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
-
-        // Clear output texture
-        // To-do?
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -482,10 +487,7 @@ impl<'a> State<'a> {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.height_map_bind_group, &[]);
-            render_pass.set_bind_group(2, &self.color_map_bind_group, &[]);
-            render_pass.set_bind_group(3, &self.output_texture_bind_group, &[]);
+            render_pass.set_bind_group(0, &self.output_texture_bind_group, &[]);
             render_pass.draw(0..6, 0..1);
         }
 

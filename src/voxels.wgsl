@@ -14,23 +14,26 @@ struct CameraUniform {
 @group(2) @binding(1) var s_color_map: sampler;
 @group(3) @binding(0) var frame: texture_storage_2d<rgba8unorm, read_write>;
 
-@compute @workgroup_size(1)
+@compute @workgroup_size(8, 8)
 fn render(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let i = i32(global_id.x);
-    let j = i32(global_id.y);
+    let x = i32(global_id.x);
+    let y = i32(global_id.y);
 
     // Only run algorithm on every column (vertical scan lines) to save compute
-    if (j == 0) {
+    if (y == 0) {
+        // Clear frame/scaneline before next redraw
+        DrawVerticalLine(x, 0.0, i32(camera.screen_height), vec4f(0.0, 0.0, 0.0, 1.0));
+
         // Camera constants (scaled based off screen dimensions)
         let horizon = f32(camera.screen_height) / 4.0;
         let scale_factor = f32(camera.screen_height) * 1.2;
         let sinPhi = sin(camera.angle);
         let cosPhi = cos(camera.angle);
-        let distance = 1200.0;
+        let distance = 600.0;
 
         // Run algorithm on map
         let map_size = textureDimensions(t_height_map, 0).xy;
-        for (var z = 0.2; z < distance; z += 1.0) {
+        for (var z = distance; z > 0; z -= 1.0) {
             // Field of view scaling and rotation calculations
             let half_width = z * tan(camera.fov * 0.5);
             let pleft = vec2(
@@ -43,25 +46,17 @@ fn render(@builtin(global_invocation_id) global_id: vec3<u32>) {
             );
 
             let dx = (pright - pleft) / f32(camera.screen_width);
-            var current = pleft + f32(i) * dx;
+            var current = pleft + f32(x) * dx;
 
-            // Normalize texture sampling coordinates to [0, 1.0] and sample repeating texture for height
-            // Edit: As of converting to a compute shader, the textureSample function is no longer available (textureLoad is used instead) 
-            //       and the normalization step is no longer performed
-            // let map_uv = (current.xy / vec2<f32>(f32(map_size.x - 1u), f32(map_size.y - 1u)));
-
-            let tex_size = textureDimensions(t_height_map, 0); // vec2<u32>
-            let wrapped_coords = vec2<i32>(
-                (i32(current.x) % i32(tex_size.x) + i32(tex_size.x)) % i32(tex_size.x),
-                (i32(current.y) % i32(tex_size.y) + i32(tex_size.y)) % i32(tex_size.y)
-            );
-            let height_val = textureLoad(t_height_map, wrapped_coords, 0).r * 255; 
+            // Normalize texture sampling coordinates to [0, 1.0]
+            let map_uv = (current.xy / vec2<f32>(f32(map_size.x - 1u), f32(map_size.y - 1u)));
+            let height_val = textureSampleLevel(t_height_map, s_height_map, map_uv, 0.0).r * 255;
 
             // Adjust height on screen based on camera constants like height and distance from camera (z value)
             let height_on_screen = ((camera.height - height_val) / z) * scale_factor + horizon;
 
-            let terrain_color = textureLoad(t_color_map, wrapped_coords, 0);
-            DrawVerticalLine(i, height_on_screen, i32(camera.screen_height), terrain_color);
+            let terrain_color = textureSampleLevel(t_color_map, s_color_map, map_uv, 0.0);
+            DrawVerticalLine(x, height_on_screen, i32(camera.screen_height), terrain_color);
         }
     }
 }

@@ -16,21 +16,7 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) ve
 
 // Fragment shader
 
-struct CameraUniform {
-    p: vec2<f32>,
-    height: f32,
-    angle: f32,
-    fov: f32,
-    screen_width: u32,
-    screen_height: u32,
-};
-
-@group(0) @binding(0) var<uniform> camera: CameraUniform;
-@group(1) @binding(0) var t_height_map: texture_2d<f32>;
-@group(1) @binding(1) var s_height_map: sampler;
-@group(2) @binding(0) var t_color_map: texture_2d<f32>;
-@group(2) @binding(1) var s_color_map: sampler;
-@group(3) @binding(0) var frame: texture_storage_2d<rgba8unorm, read_write>;
+@group(0) @binding(0) var frame: texture_storage_2d<rgba8unorm, read_write>;
 
 @fragment
 fn fs_main(@builtin(position) pos: vec4f) -> @location(0) vec4<f32> {
