@@ -14,7 +14,7 @@ struct CameraUniform {
 @group(2) @binding(1) var s_color_map: sampler;
 @group(3) @binding(0) var frame: texture_storage_2d<rgba8unorm, read_write>;
 
-@compute @workgroup_size(8, 8)
+@compute @workgroup_size(256)
 fn render(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let x = i32(global_id.x);
     let y = i32(global_id.y);
@@ -29,11 +29,12 @@ fn render(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let scale_factor = f32(camera.screen_height) * 1.2;
         let sinPhi = sin(camera.angle);
         let cosPhi = cos(camera.angle);
-        let distance = 600.0;
+        let distance = 800.0;
 
         // Run algorithm on map
         let map_size = textureDimensions(t_height_map, 0).xy;
-        for (var z = distance; z > 0; z -= 1.0) {
+        var maximum_height = i32(camera.screen_height);
+        for (var z = 0.2f; z < distance; z += 1.0f) {
             // Field of view scaling and rotation calculations
             let half_width = z * tan(camera.fov * 0.5);
             let pleft = vec2(
@@ -55,8 +56,16 @@ fn render(@builtin(global_invocation_id) global_id: vec3<u32>) {
             // Adjust height on screen based on camera constants like height and distance from camera (z value)
             let height_on_screen = ((camera.height - height_val) / z) * scale_factor + horizon;
 
+            // Draw terrain line
             let terrain_color = textureSampleLevel(t_color_map, s_color_map, map_uv, 0.0);
-            DrawVerticalLine(x, height_on_screen, i32(camera.screen_height), terrain_color);
+            let fog = pow((distance - z) / distance, 0.2f);
+            let shaded_terrain = ((fog * terrain_color) + (1 - fog));
+            DrawVerticalLine(x, height_on_screen, maximum_height, shaded_terrain);
+
+            // Adjust maximum height
+            if (i32(height_on_screen) < maximum_height) {
+                maximum_height = i32(height_on_screen);
+            }
         }
     }
 }

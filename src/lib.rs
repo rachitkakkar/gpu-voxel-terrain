@@ -462,7 +462,7 @@ impl<'a> State<'a> {
             cpass.set_bind_group(1, &self.height_map_bind_group, &[]);
             cpass.set_bind_group(2, &self.color_map_bind_group, &[]);
             cpass.set_bind_group(3, &self.output_texture_bind_group, &[]);
-            cpass.dispatch_workgroups((self.camera.screen_width + 7) / 8, (self.camera.screen_height + 7) / 8, 1);
+            cpass.dispatch_workgroups((self.camera.screen_width + 255) / 256, self.camera.screen_height, 1);
         }
 
         {
