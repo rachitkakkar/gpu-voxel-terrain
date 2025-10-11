@@ -51,7 +51,7 @@ struct State<'a> {
     color_map: texture::Texture,
     color_map_bind_group: wgpu::BindGroup,
 
-    // Output texture
+    // Output texture/frame
     output_texture: texture::Texture,
     output_texture_bind_group: wgpu::BindGroup,
 }
@@ -436,7 +436,7 @@ impl<'a> State<'a> {
     }
 
     fn update(&mut self) {
-        self.camera.angle += 0.05;
+        self.camera.angle += 0.02;
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
     }
 

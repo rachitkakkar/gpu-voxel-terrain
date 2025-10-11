@@ -21,8 +21,8 @@ fn render(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     // Only run algorithm on every column (vertical scan lines) to save compute
     if (y == 0) {
-        // Clear frame/scaneline before next redraw
-        DrawVerticalLine(x, 0.0, i32(camera.screen_height), vec4f(0.0, 0.0, 0.0, 1.0));
+        // Clear frame/scaneline by drawing a sky
+        DrawVerticalLineGradient(x, 0.0, i32(camera.screen_height), vec3f(0.3, 0.5, 1.0), camera.screen_height);
 
         // Camera constants (scaled based off screen dimensions)
         let horizon = f32(camera.screen_height) / 4.0;
@@ -56,11 +56,13 @@ fn render(@builtin(global_invocation_id) global_id: vec3<u32>) {
             // Adjust height on screen based on camera constants like height and distance from camera (z value)
             let height_on_screen = ((camera.height - height_val) / z) * scale_factor + horizon;
 
-            // Draw terrain line
+            // Sample terrain color from color map
             let terrain_color = textureSampleLevel(t_color_map, s_color_map, map_uv, 0.0);
-            let fog = pow((distance - z) / distance, 0.2f);
-            let shaded_terrain = ((fog * terrain_color) + (1 - fog));
-            DrawVerticalLine(x, height_on_screen, maximum_height, shaded_terrain);
+
+            // Mimic effects of fog by increasing opacity with distance (so terrain blends into sky)
+            let fog = pow((distance - z) / distance, 2.0);
+            // let shaded_terrain = vec4f(terrain_color.xyz, fog);
+            DrawVerticalLine(x, height_on_screen, maximum_height, terrain_color);
 
             // Adjust maximum height
             if (i32(height_on_screen) < maximum_height) {
@@ -73,5 +75,12 @@ fn render(@builtin(global_invocation_id) global_id: vec3<u32>) {
 fn DrawVerticalLine(x: i32, y_start: f32, y_end: i32, color: vec4<f32>) {
     for (var y = i32(y_start); y < y_end; y = y + 1) {
         textureStore(frame, vec2<i32>(x, y), color);
+    }
+}
+
+fn DrawVerticalLineGradient(x: i32, y_start: f32, y_end: i32, color: vec3<f32>, screen_height: u32) {
+    for (var y = i32(y_start); y < y_end; y = y + 1) {
+        var gradient_color = vec4f(vec3f(color * (1.0 - (f32(y) / f32(screen_height)))), 1.0);
+        textureStore(frame, vec2<i32>(x, y), gradient_color);
     }
 }
