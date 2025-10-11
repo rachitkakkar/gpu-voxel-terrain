@@ -29,12 +29,16 @@ fn render(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let scale_factor = f32(camera.screen_height) * 1.2;
         let sinPhi = sin(camera.angle);
         let cosPhi = cos(camera.angle);
-        let distance = 800.0;
+        let distance = 1200.0;
+        var step_size = 0.2f;
 
         // Run algorithm on map
         let map_size = textureDimensions(t_height_map, 0).xy;
         var maximum_height = i32(camera.screen_height);
-        for (var z = 0.2f; z < distance; z += 1.0f) {
+        for (var z = 0.2f; z < distance; z += step_size) {
+            // Incremental step size (less level of detail with further distance)
+            step_size += 0.005f;
+
             // Field of view scaling and rotation calculations
             let half_width = z * tan(camera.fov * 0.5);
             let pleft = vec2(

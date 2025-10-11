@@ -436,7 +436,7 @@ impl<'a> State<'a> {
     }
 
     fn update(&mut self) {
-        self.camera.angle += 0.02;
+        self.camera.angle += 0.035;
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
     }
 
