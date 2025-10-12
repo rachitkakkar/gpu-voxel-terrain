@@ -88,8 +88,9 @@ fn fs_main(@builtin(position) pos: vec4f) -> @location(0) vec4<f32> {
 # To-do
 - Working camera controller (with delta time)
 - Cool GIF Gallery
-- More height/color maps
-- Circular clipping
+- Procedural terrain generation with Perlin noise
+- Bilinear interpolation
+- Imgui Interface
 - Front-to-back rendering
 - Incremental step-size
 
