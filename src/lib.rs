@@ -53,6 +53,7 @@ struct State<'a> {
 
     // Output texture/frame
     output_texture: texture::Texture,
+    output_texture_bind_group_layout: wgpu::BindGroupLayout,
     output_texture_bind_group: wgpu::BindGroup,
 }
 
@@ -394,6 +395,7 @@ impl<'a> State<'a> {
             color_map_bind_group,
 
             output_texture,
+            output_texture_bind_group_layout,
             output_texture_bind_group,
         }
     }
@@ -412,19 +414,19 @@ impl<'a> State<'a> {
             self.camera.screen_height = new_size.height;
             self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera]));
             
-            // Resize output texture
+            // Resize output texture/frame
             self.output_texture =
                 texture::Texture::create_storage_texture(&self.device, &self.config, "output_texture");      
-            // self.output_texture_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            //     layout: &output_texture_bind_group_layout,
-            //     entries: &[
-            //         wgpu::BindGroupEntry {
-            //             binding: 0,
-            //             resource: wgpu::BindingResource::TextureView(&self.output_texture.view),
-            //         },
-            //     ],
-            //     label: Some("output_texture_bind_group"),
-            // });
+            self.output_texture_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &self.output_texture_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&self.output_texture.view),
+                    },
+                ],
+                label: Some("output_texture_bind_group"),
+            });
             
             self.surface.configure(&self.device, &self.config);
         }
