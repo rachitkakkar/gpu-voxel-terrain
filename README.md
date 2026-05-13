@@ -143,9 +143,9 @@ cargo run --release
 ```
 
 ### WebAssembly (WebGL2/WebGPU)
-To run in the browser, you will need to compile via `wasm-pack` or build for the `wasm32` target and serve it.
+To run in the browser, you will need to compile via `wasm-pack` to target and serve it.
 ```bash
-cargo build --target wasm32-unknown-unknown
+wasm-pack build --target web
 ```
 
 # Sources
