@@ -134,7 +134,7 @@ fn render(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
 ## Building and Running
 
-This project targets both native (Windows, macOS, Linux) and WebAssembly (`wasm32-unknown-unknown`).
+This project targets both native (Windows, macOS, Linux) and WebAssembly.
 
 ### Native
 Ensure you have the latest stable Rust toolchain installed.
